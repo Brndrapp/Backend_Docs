@@ -1,0 +1,623 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Backend API for Brndr. Routes accept and return application/x-protobuf payloads unless otherwise noted.",
+        "title": "Brndr API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/photo": {
+            "post": {
+                "description": "Uploads an image, converts it to webp, and returns the stored image url.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Upload photo",
+                "parameters": [
+                    {
+                        "description": "Image payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Post_Image_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image url",
+                        "schema": {
+                            "$ref": "#/definitions/model.Post_Image_Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/receive": {
+            "get": {
+                "description": "Returns all messages for the authenticated user.",
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Fetch messages",
+                "responses": {
+                    "200": {
+                        "description": "User messages",
+                        "schema": {
+                            "$ref": "#/definitions/model.Messages_Return"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/send": {
+            "post": {
+                "description": "Stores an encrypted message for the recipients.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Send a message",
+                "parameters": [
+                    {
+                        "description": "Message payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Message_Send"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/delete": {
+            "post": {
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Delete account",
+                "responses": {}
+            }
+        },
+        "/feed": {
+            "get": {
+                "description": "Returns a recommended person for the feed.",
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get feed person",
+                "responses": {
+                    "200": {
+                        "description": "Recommended person",
+                        "schema": {
+                            "$ref": "#/definitions/model.Person_Profile"
+                        }
+                    }
+                }
+            }
+        },
+        "/friends": {
+            "get": {
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get friends",
+                "responses": {
+                    "200": {
+                        "description": "Friends list",
+                        "schema": {
+                            "$ref": "#/definitions/model.Person_Profile"
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Logout",
+                "responses": {}
+            }
+        },
+        "/ping": {
+            "get": {
+                "description": "Accepts a valid Auth and returns a long-lived Refresh_Token.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Ping test / token exchange",
+                "parameters": [
+                    {
+                        "description": "Auth payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Ping_Test"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/model.Ping_Test_Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile": {
+            "get": {
+                "description": "Returns the profile for the requested user id.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Get profile",
+                "parameters": [
+                    {
+                        "description": "Profile request payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Person_Profile_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile",
+                        "schema": {
+                            "$ref": "#/definitions/model.Person_Profile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile_picture": {
+            "post": {
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Upload profile picture",
+                "parameters": [
+                    {
+                        "description": "Profile picture payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Post_Avatar_Request"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/report": {
+            "post": {
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Report user/content",
+                "responses": {}
+            }
+        },
+        "/users/state": {
+            "get": {
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Fetch users states",
+                "responses": {}
+            }
+        },
+        "/ws": {
+            "get": {
+                "description": "Upgrades the connection to a WebSocket. First message must be a valid Auth_Read protobuf.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "WebSocket connection",
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/zajmy": {
+            "get": {
+                "description": "Returns the global list of zajmy (interests).",
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "List interests",
+                "responses": {
+                    "200": {
+                        "description": "List of interests",
+                        "schema": {
+                            "$ref": "#/definitions/model.Zajmy_Request"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "model.Auth": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "$ref": "#/definitions/model.Refresh_Token"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Key": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Message": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "user_keys_enc": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Key"
+                    }
+                }
+            }
+        },
+        "model.Message_Send": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/model.Auth"
+                },
+                "message": {
+                    "$ref": "#/definitions/model.Message"
+                }
+            }
+        },
+        "model.Messages_Return": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Message"
+                    }
+                }
+            }
+        },
+        "model.Person_Profile": {
+            "type": "object",
+            "properties": {
+                "bio": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Profile_Image"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "orientace": {
+                    "type": "string"
+                },
+                "pohlavi": {
+                    "type": "string"
+                },
+                "typ_hledany_vztah": {
+                    "type": "string"
+                },
+                "vzdalenost": {
+                    "type": "number"
+                },
+                "zajmy": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.Person_Profile_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/model.Auth"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Ping_Test": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/model.Auth"
+                }
+            }
+        },
+        "model.Ping_Test_Response": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "$ref": "#/definitions/model.Refresh_Token"
+                }
+            }
+        },
+        "model.Post_Avatar_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/model.Auth"
+                },
+                "image_path": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.Post_Image_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/model.Auth"
+                },
+                "image": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.Post_Image_Response": {
+            "type": "object",
+            "properties": {
+                "image_url": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.Profile_Image": {
+            "type": "object",
+            "properties": {
+                "image_path": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Refresh_Token": {
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "type": "integer"
+                },
+                "token": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.Zajem_Full": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "main_alias_id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.Zajmy_Request": {
+            "type": "object",
+            "properties": {
+                "zajmy": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Zajem_Full"
+                    }
+                }
+            }
+        }
+    }
+}
