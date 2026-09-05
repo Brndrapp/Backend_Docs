@@ -1066,7 +1066,7 @@
         },
         "/api/profile/update": {
             "post": {
-                "description": "Persists editable profile fields. Name, pohlavi and faculty are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
+                "description": "Persists editable profile fields. Name, pohlavi, faculty and birth (year+month, stored on the last day of the month) are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -2650,6 +2650,13 @@
                 },
                 "bio": {
                     "type": "string"
+                },
+                "birth_month": {
+                    "type": "integer"
+                },
+                "birth_year": {
+                    "description": "Account-level birth (2026-09-05): the user picks year+month only, the\nday is unknown by design. The server stores users.birth_date on the\nLAST day of that month (\"assume it is the last day of the month\"),\nso the birthday-aware exact_age turns the age on the month's last\nday — the same convention the frontend's ageFromBirth uses.\nZero = keep (never cleared; same as the other identity fields).",
+                    "type": "integer"
                 },
                 "city": {
                     "description": "Account-level, shared across kinds (2026-09-03). Empty = keep.",
