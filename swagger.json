@@ -412,6 +412,348 @@
                 }
             }
         },
+        "/api/key": {
+            "get": {
+                "description": "Returns any user's published E2EE public key (32 B raw X25519) — peers seal messages to it, the owner compares it against the locally derived key for drift detection. Empty public_key = the user has not published one (send plaintext). Authenticated: no anonymous bulk scrape of key material; any authenticated user may fetch any user's key — public keys are public by design.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Fetch a user's E2EE public key",
+                "parameters": [
+                    {
+                        "description": "Key query (whose key to fetch)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The user's key (empty public_key = none)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Public"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request (missing user_id)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Returns any user's published E2EE public key (32 B raw X25519) — peers seal messages to it, the owner compares it against the locally derived key for drift detection. Empty public_key = the user has not published one (send plaintext). Authenticated: no anonymous bulk scrape of key material; any authenticated user may fetch any user's key — public keys are public by design.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Fetch a user's E2EE public key",
+                "parameters": [
+                    {
+                        "description": "Key query (whose key to fetch)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The user's key (empty public_key = none)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Public"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request (missing user_id)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/key/publish": {
+            "post": {
+                "description": "Publishes the caller's E2EE public key — write-once: it only succeeds while no key is published (409 otherwise), so a stolen token cannot swap a key out from under existing conversations. Publishing again after a deliberate /api/key/reset works. Exactly 32 bytes (raw X25519).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Publish my E2EE public key",
+                "parameters": [
+                    {
+                        "description": "Publish payload (32 B raw X25519)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Publish"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (wrong key size)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "A key is already published (reset first)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/key/reset": {
+            "post": {
+                "description": "Clears the caller's published public key AND wrapped-key blob in one transaction — the explicit recovery for a deleted passkey, a device reset or a confirmed drift warning. Afterwards /api/key/publish succeeds again and the client enrolls a fresh identity. Messages encrypted to the previous key become irrecoverable (inherent to the design). The account password is required: a bare stolen token must not be able to destroy message readability (the same friction as /api/delete).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Reset my E2EE identity",
+                "parameters": [
+                    {
+                        "description": "Reset payload (password required)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Reset"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (missing password)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Wrong password",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/key/wrapped": {
+            "get": {
+                "description": "Returns the caller's own password-wrapped private key (the fallback identity blob: public key, wrapped private key, PBKDF2 salt and iteration count — opaque to the server, which never parses it). Self only: the authenticated user is the owner, there is no user_id on the wire. Empty response = no fallback identity stored. The blob is offline-attackable, so fetches are rate-limited (429 + Retry-After) and logged.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Fetch my wrapped E2EE key",
+                "parameters": [
+                    {
+                        "description": "Auth payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Wrapped_Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The wrapped key (empty = none stored)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Wrapped"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many fetches; Retry-After header set",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Returns the caller's own password-wrapped private key (the fallback identity blob: public key, wrapped private key, PBKDF2 salt and iteration count — opaque to the server, which never parses it). Self only: the authenticated user is the owner, there is no user_id on the wire. Empty response = no fallback identity stored. The blob is offline-attackable, so fetches are rate-limited (429 + Retry-After) and logged.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Fetch my wrapped E2EE key",
+                "parameters": [
+                    {
+                        "description": "Auth payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Wrapped_Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The wrapped key (empty = none stored)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Wrapped"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many fetches; Retry-After header set",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/key/wrapped/save": {
+            "post": {
+                "description": "Stores (or replaces — the normal \"wipe local state, re-wrap\" flow) the caller's password-wrapped private key blob. The server keeps it opaque; only the shape is validated: public_key exactly 32 B, wrapped_private_key 1-256 B, kdf_salt 1-32 B, kdf_iterations \u003e= 100000. The client saves this BEFORE publishing the public key: a wrapped key without a published key is a harmless half-state its owner resolves by re-creating the identity.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Save my wrapped E2EE key",
+                "parameters": [
+                    {
+                        "description": "Wrapped key payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Wrapped_Save"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (missing key / invalid shape)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/like": {
             "post": {
                 "description": "Records a like (/api/like) or removes it (/api/unlike) for the target user. Users cannot like themselves. Unlike after a match is a no-op (matches are permanent). The resulting hub state is read from /api/interactions.",
@@ -645,6 +987,70 @@
                     },
                     "413": {
                         "description": "Image too large",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/photo/encrypted": {
+            "post": {
+                "description": "Stores a client-side-encrypted photo as an opaque blob: no decode, no re-encode, no format sniffing — the raw bytes are hashed (sha256 of the CIPHERTEXT, never the plaintext: no confirmation oracle), written to public/encrypted/\u003chash\u003e.bin (identical bytes dedup to the same file) and served back at /uploads/encrypted/\u003chash\u003e.bin as application/octet-stream with nosniff. The URL and the decryption key travel inside the sealed message body, never here. Max 1.5 MB; 30 uploads per hour per user.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Upload an encrypted photo blob",
+                "parameters": [
+                    {
+                        "description": "Encrypted blob",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Photo_Encrypted_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Blob url",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Post_Image_Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request (empty blob)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "413": {
+                        "description": "Blob too large",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Upload rate limit; Retry-After header set",
                         "schema": {
                             "type": "string"
                         }
@@ -962,7 +1368,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Delete_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Delete_Request"
                         }
                     }
                 ],
@@ -1014,7 +1420,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Discovery_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Discovery_Request"
                         }
                     }
                 ],
@@ -1520,6 +1926,32 @@
                 "Community_Template_COMMUNITY_EXTENDED"
             ]
         },
+        "github_com_petrobsel_brndr_backend_gen.Delete_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Discovery_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "discoverable": {
+                    "description": "True = visible and findable (the default); false = hidden in that kind.",
+                    "type": "boolean"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
+                }
+            }
+        },
         "github_com_petrobsel_brndr_backend_gen.Email_Send_Code_Request": {
             "type": "object",
             "properties": {
@@ -1641,6 +2073,107 @@
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Public": {
+            "type": "object",
+            "properties": {
+                "public_key": {
+                    "description": "32 B raw X25519; EMPTY = the user has no published key.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Publish": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "public_key": {
+                    "description": "Exactly 32 B raw X25519.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Query": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Reset": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Wrapped": {
+            "type": "object",
+            "properties": {
+                "kdf_iterations": {
+                    "description": "600 000 today.",
+                    "type": "integer"
+                },
+                "kdf_salt": {
+                    "description": "16 B PBKDF2 salt (CLIENT-side KDF — unrelated to users.salt).",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "public_key": {
+                    "description": "32 B raw X25519 public key.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "wrapped_private_key": {
+                    "description": "Opaque: [0x01 ‖ iv(12) ‖ AES-256-GCM(pkcs8, wrapKey)].",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Wrapped_Query": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key_Wrapped_Save": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "key": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key_Wrapped"
                 }
             }
         },
@@ -1918,6 +2451,20 @@
                 }
             }
         },
+        "github_com_petrobsel_brndr_backend_gen.Photo_Encrypted_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "github_com_petrobsel_brndr_backend_gen.Post_Image_Request": {
             "type": "object",
             "properties": {
@@ -2183,32 +2730,6 @@
                     "items": {
                         "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Zajem_Full"
                     }
-                }
-            }
-        },
-        "model.Delete_Request": {
-            "type": "object",
-            "properties": {
-                "auth": {
-                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.Discovery_Request": {
-            "type": "object",
-            "properties": {
-                "auth": {
-                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
-                },
-                "discoverable": {
-                    "description": "True = visible and findable (the default); false = hidden in that kind.",
-                    "type": "boolean"
-                },
-                "kind": {
-                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
                 }
             }
         }
