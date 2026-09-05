@@ -1066,7 +1066,7 @@
         },
         "/api/profile/update": {
             "post": {
-                "description": "Persists editable profile fields. Name and pohlavi are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
+                "description": "Persists editable profile fields. Name, pohlavi and faculty are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1620,7 +1620,7 @@
         },
         "/register": {
             "post": {
-                "description": "Creates an account. The email must be a student address (vutbr.cz / vut.cz domain). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the username is already taken.",
+                "description": "Creates an account. The email must be a student address (vut.cz domain only — not vutbr.cz, per the 2026-09-05 decision). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the username is already taken.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -2405,6 +2405,10 @@
                 "dating": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Kind_Profile"
                 },
+                "faculty": {
+                    "description": "VUT faculty key ('FIT', 'FaVU', …; 2026-09-05) from the shared\nvocabulary (vocab/fakulty.go). Public — it renders on profile cards.\nEmpty = not set („už nestuduji“).",
+                    "type": "string"
+                },
                 "friendship": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Kind_Profile"
                 },
@@ -2649,6 +2653,10 @@
                 },
                 "city": {
                     "description": "Account-level, shared across kinds (2026-09-03). Empty = keep.",
+                    "type": "string"
+                },
+                "faculty": {
+                    "description": "Account-level VUT faculty key ('FIT', 'FaVU', …; 2026-09-05), shared\nacross kinds. Empty = keep (same as city). Validated against the\nshared vocabulary (vocab/fakulty.go — the same keys the frontend's\nFACULTIES uses); there is deliberately no CHECK constraint, so adding\na faculty is a vocab change, not a migration.",
                     "type": "string"
                 },
                 "gps_pozice": {
