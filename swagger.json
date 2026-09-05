@@ -10,11 +10,135 @@
         "version": "1.0"
     },
     "host": "localhost:8080",
-    "basePath": "/",
+    "basePath": "/api",
     "paths": {
-        "/api/photo": {
+        "/api/block": {
             "post": {
-                "description": "Uploads an image, converts it to webp, and returns the stored image url.",
+                "description": "Records (/api/block) or lifts (/api/unblock) the caller's block of the target. A block withdraws BOTH likes and leaves the pair unmatched, but the thread stays in the hub on both sides — readable, category UNMATCHED_VISIBLE, flagged while the block stands (person.blocked); an unblock only drops the flag, and only a mutual re-like restores the match. Likes and messages between the pair are refused while severed. Both block and unblock are idempotent.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Block / unblock a user",
+                "parameters": [
+                    {
+                        "description": "Block payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Block_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (missing/self/unknown target)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/blocked": {
+            "post": {
+                "description": "Returns the ids of the people the caller has blocked (who blocked the caller is never exposed).",
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "List blocked users",
+                "responses": {
+                    "200": {
+                        "description": "Blocked user ids",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Blocked_Return"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/browsing": {
+            "post": {
+                "description": "Stores a batch of browsing elements (accounts the user saw, with timestamps) for the authenticated user. Uploads are idempotent and safe to retry.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Upload browsing telemetry",
+                "parameters": [
+                    {
+                        "description": "Browsing telemetry batch",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Browsing"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/community": {
+            "get": {
+                "description": "Returns the active community-board posts (\"Vývěska\") — not yet expired, newest first. Blocked authors' posts are NOT filtered: the client drops them with its own block list (\"flags, not filters\").",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -24,23 +148,69 @@
                 "tags": [
                     "private"
                 ],
-                "summary": "Upload photo",
+                "summary": "Fetch the community board",
                 "parameters": [
                     {
-                        "description": "Image payload",
+                        "description": "Auth payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Post_Image_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth_Read"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Image url",
+                        "description": "Active posts",
                         "schema": {
-                            "$ref": "#/definitions/model.Post_Image_Response"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Return"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/community/create": {
+            "post": {
+                "description": "Publishes a board post as the authenticated user. The server normalizes the draft: title/desc trimmed and capped (80/400 chars), days clamped to 1-30, looking chips only on the extended template (trimmed, capped, at most 6). Returns the stored post (id, author, timestamps).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Publish a community post",
+                "parameters": [
+                    {
+                        "description": "Create payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Create_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The stored post",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Post"
                         }
                     },
                     "400": {
@@ -64,6 +234,458 @@
                 }
             }
         },
+        "/api/community/delete": {
+            "post": {
+                "description": "Deletes one of the caller's own board posts (author check: 403 for anybody else's post, 404 when the post does not exist).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Delete a community post",
+                "parameters": [
+                    {
+                        "description": "Delete payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Delete_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Not the post's author",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Post not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/email/send-code": {
+            "post": {
+                "description": "Issues a one-time code to a student email (6 digits, 10 min TTL). At most one send per address per minute; a resend replaces any previous code. Delivery needs BRNDR_SMTP_PASS on the server — otherwise the code is logged, not sent (dev mode).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Send a verification code",
+                "parameters": [
+                    {
+                        "description": "Email to verify",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Email_Send_Code_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Not a student email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Cooldown; Retry-After header set",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to send the email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/email/verify-code": {
+            "post": {
+                "description": "Checks the submitted one-time code for the address. 204 on match (the address is marked verified — and any UNAUTH account with that email is ACTIVATED: locked accounts become usable), 400 when no code was requested or the code is wrong/expired, 429 after too many wrong attempts (request a new code).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Verify an email code",
+                "parameters": [
+                    {
+                        "description": "Email and typed code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Email_Verify_Code_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "No code / wrong or expired code",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/interactions": {
+            "post": {
+                "description": "Returns the authenticated user's connections with server-computed categories (chats/matches/likes/requests). peer_id set scopes the answer to that one entry — the websocket Interaction_Changed hint names the peer to re-fetch this way.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Get interactions",
+                "parameters": [
+                    {
+                        "description": "Hub query (peer_id 0 = whole hub)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Interaction_Query"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Connections by category",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Interactions_Return"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/like": {
+            "post": {
+                "description": "Records a like (/api/like) or removes it (/api/unlike) for the target user. Users cannot like themselves. Unlike after a match is a no-op (matches are permanent). The resulting hub state is read from /api/interactions.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Like / unlike a user",
+                "parameters": [
+                    {
+                        "description": "Like payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Like_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matched flag",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Like_Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/liked": {
+            "post": {
+                "description": "Returns the ids of the people the caller currently likes (their outgoing likes; who liked the caller lives in the hub's LIKES/REQUESTS entries). Pre-match and matched alike; a pre-match unlike, a block or an unmatch withdraws the like, unlike after a match is a no-op. A first/unmatched message attaches the sender's like.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "List outgoing likes",
+                "responses": {
+                    "200": {
+                        "description": "Liked user ids",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Liked_Return"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/me": {
+            "get": {
+                "description": "Returns the authenticated user's own view: the shared identity, both kind-profiles, and the account facts only the owner may read (username, email, city). The public /profile lookup cannot return these — they live on Me_Return, not Person_Profile.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Get my profile",
+                "parameters": [
+                    {
+                        "description": "Auth payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth_Read"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Own profile",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Me_Return"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/messages/react": {
+            "post": {
+                "description": "Toggles the authenticated user's emoji reaction on a message (same emoji twice = remove). Only the sender or a recipient of the message may react; a blocked-pair thread is refused (400). The updated reaction state is read back via the message endpoints.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Toggle a message reaction",
+                "parameters": [
+                    {
+                        "description": "Reaction payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message_React_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Message not found for this user",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/photo": {
+            "post": {
+                "description": "Uploads an image (max 2 MB): webp inputs (the client's compressed format) are stored verbatim, other image formats are converted to webp, non-images are refused. Returns the stored image url.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Upload photo",
+                "parameters": [
+                    {
+                        "description": "Image payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Post_Image_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Image url",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Post_Image_Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "413": {
+                        "description": "Image too large",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/profile/update": {
+            "post": {
+                "description": "Persists editable profile fields. Name and pohlavi are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Update own profile",
+                "parameters": [
+                    {
+                        "description": "Profile update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Update_Profile_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/api/receive": {
             "get": {
                 "description": "Returns all messages for the authenticated user.",
@@ -78,7 +700,7 @@
                     "200": {
                         "description": "User messages",
                         "schema": {
-                            "$ref": "#/definitions/model.Messages_Return"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Messages_Return"
                         }
                     },
                     "401": {
@@ -98,7 +720,7 @@
         },
         "/api/send": {
             "post": {
-                "description": "Stores an encrypted message for the recipients.",
+                "description": "Stores an encrypted message for the recipients. An optional reply_to references a prior message of the same thread (visible to the sender); an invisible reply target is rejected. A first/unmatched send attaches the sender's like (so opening on someone who already liked you matches instantly).",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -113,7 +735,188 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Message_Send"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message_Send"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (bad/foreign reply target, duplicate recipient)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/suggestion": {
+            "get": {
+                "description": "Returns user suggestions matching the search filters.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Suggest people",
+                "parameters": [
+                    {
+                        "description": "Suggestion search payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Suggestion_Search"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Suggested people",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile_List"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/unblock": {
+            "post": {
+                "description": "Records (/api/block) or lifts (/api/unblock) the caller's block of the target. A block withdraws BOTH likes and leaves the pair unmatched, but the thread stays in the hub on both sides — readable, category UNMATCHED_VISIBLE, flagged while the block stands (person.blocked); an unblock only drops the flag, and only a mutual re-like restores the match. Likes and messages between the pair are refused while severed. Both block and unblock are idempotent.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Block / unblock a user",
+                "parameters": [
+                    {
+                        "description": "Block payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Block_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (missing/self/unknown target)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/unlike": {
+            "post": {
+                "description": "Records a like (/api/like) or removes it (/api/unlike) for the target user. Users cannot like themselves. Unlike after a match is a no-op (matches are permanent). The resulting hub state is read from /api/interactions.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Like / unlike a user",
+                "parameters": [
+                    {
+                        "description": "Like payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Like_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matched flag",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Like_Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/unmatch": {
+            "post": {
+                "description": "Tombstones the pair's relation on both sides: the thread leaves both hubs, likes are withdrawn, the message history is kept. A later like or message from either side revives the thread; a mutual re-like restores the match. Idempotent.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Unmatch a user",
+                "parameters": [
+                    {
+                        "description": "Unmatch payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Unmatch_Request"
                         }
                     }
                 ],
@@ -123,6 +926,12 @@
                     },
                     "400": {
                         "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "string"
                         }
@@ -150,58 +959,44 @@
         },
         "/feed": {
             "get": {
-                "description": "Returns a recommended person for the feed.",
-                "produces": [
-                    "application/x-protobuf"
-                ],
-                "tags": [
-                    "public"
-                ],
-                "summary": "Get feed person",
-                "responses": {
-                    "200": {
-                        "description": "Recommended person",
-                        "schema": {
-                            "$ref": "#/definitions/model.Person_Profile"
-                        }
-                    }
-                }
-            }
-        },
-        "/friends": {
-            "get": {
-                "produces": [
-                    "application/x-protobuf"
-                ],
-                "tags": [
-                    "public"
-                ],
-                "summary": "Get friends",
-                "responses": {
-                    "200": {
-                        "description": "Friends list",
-                        "schema": {
-                            "$ref": "#/definitions/model.Person_Profile"
-                        }
-                    }
-                }
-            }
-        },
-        "/logout": {
-            "post": {
+                "description": "Returns profiles for the swipe feed (ordered list; a cursor can come later), excluding people whose visibility toward the caller is severed by a block. Every person carries both profiles; ?kind=dating|friendship narrows the feed to users presenting that mode.",
                 "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
                     "application/x-protobuf"
                 ],
                 "tags": [
                     "private"
                 ],
-                "summary": "Logout",
-                "responses": {}
+                "summary": "Get feed people",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only users presenting this kind's profile",
+                        "name": "kind",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Feed people",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile_List"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
-        "/ping": {
-            "get": {
-                "description": "Accepts a valid Auth and returns a long-lived Refresh_Token.",
+        "/login": {
+            "post": {
+                "description": "Exchanges username + password (bcrypt, set at /register) for the account id and a refresh token — the only way to obtain one. An UNAUTH account (registered, email not yet verified) is refused with 403; without a token no private endpoint (or websocket) is reachable.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -211,27 +1006,39 @@
                 "tags": [
                     "public"
                 ],
-                "summary": "Ping test / token exchange",
+                "summary": "Login",
                 "parameters": [
                     {
-                        "description": "Auth payload",
+                        "description": "Login payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Ping_Test"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Login_Request"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Refresh token",
+                        "description": "Account id + refresh token",
                         "schema": {
-                            "$ref": "#/definitions/model.Ping_Test_Response"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Login_Response"
                         }
                     },
                     "400": {
-                        "description": "Bad request",
+                        "description": "Bad request (missing username/password)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unknown user or wrong password",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Email not verified (locked account)",
                         "schema": {
                             "type": "string"
                         }
@@ -245,39 +1052,33 @@
                 }
             }
         },
-        "/profile": {
-            "get": {
-                "description": "Returns the profile for the requested user id.",
+        "/logout": {
+            "post": {
+                "description": "Revokes the authenticated user's login token: the token (and every live websocket connection of the user) stops working immediately — re-login is the only way back. The client discards its copy; the server-side revocation is what makes logout real.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
-                "produces": [
-                    "application/x-protobuf"
-                ],
                 "tags": [
-                    "public"
+                    "private"
                 ],
-                "summary": "Get profile",
+                "summary": "Logout",
                 "parameters": [
                     {
-                        "description": "Profile request payload",
+                        "description": "Auth payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Person_Profile_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth_Read"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "User profile",
-                        "schema": {
-                            "$ref": "#/definitions/model.Person_Profile"
-                        }
+                    "204": {
+                        "description": "No Content"
                     },
-                    "400": {
-                        "description": "Bad request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "string"
                         }
@@ -285,27 +1086,102 @@
                 }
             }
         },
-        "/profile_picture": {
-            "post": {
+        "/profile": {
+            "get": {
+                "description": "Returns every user matching the query (id, name, email), each with the shared identity and both profiles. Private since 2026-09-05 (SECURITY_AUDIT P0: the public lookup was a bulk-scraping hole — the email/name search in particular). Blocked pairs are flagged (person.blocked), never filtered — \"flags, not filters\".",
                 "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
                     "application/x-protobuf"
                 ],
                 "tags": [
                     "private"
                 ],
-                "summary": "Upload profile picture",
+                "summary": "Get profile",
                 "parameters": [
                     {
-                        "description": "Profile picture payload",
+                        "description": "Profile query payload (at least one of id/name/email)",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Post_Avatar_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile_Query"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "Matching profiles",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile_List"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request (empty query)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/register": {
+            "post": {
+                "description": "Creates an account. The email must be a student address (vutbr.cz / vut.cz domain). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the username is already taken.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Register a new user",
+                "parameters": [
+                    {
+                        "description": "Registration payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Register_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "User with username already exists",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/report": {
@@ -317,18 +1193,6 @@
                     "private"
                 ],
                 "summary": "Report user/content",
-                "responses": {}
-            }
-        },
-        "/users/state": {
-            "get": {
-                "produces": [
-                    "application/x-protobuf"
-                ],
-                "tags": [
-                    "private"
-                ],
-                "summary": "Fetch users states",
                 "responses": {}
             }
         },
@@ -369,7 +1233,7 @@
                     "200": {
                         "description": "List of interests",
                         "schema": {
-                            "$ref": "#/definitions/model.Zajmy_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Zajmy_Request"
                         }
                     },
                     "500": {
@@ -383,18 +1247,310 @@
         }
     },
     "definitions": {
-        "model.Auth": {
+        "github_com_petrobsel_brndr_backend_gen.Auth": {
             "type": "object",
             "properties": {
                 "token": {
-                    "$ref": "#/definitions/model.Refresh_Token"
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Refresh_Token"
                 },
                 "user_id": {
                     "type": "integer"
                 }
             }
         },
-        "model.Key": {
+        "github_com_petrobsel_brndr_backend_gen.Auth_Read": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Block_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Blocked_Return": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Browsing": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "element": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Browsing_Element"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Browsing_Element": {
+            "type": "object",
+            "properties": {
+                "element": {
+                    "description": "Types that are valid to be assigned to Element:\n\n\t*Browsing_Element_Account"
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Create_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "draft": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Draft"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Delete_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Draft": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "description": "Days the post stays live, 1-30 (clamped).",
+                    "type": "integer"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Kind"
+                },
+                "looking": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "template": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Template"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Kind": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4
+            ],
+            "x-enum-varnames": [
+                "Community_Kind_COMMUNITY_FUN",
+                "Community_Kind_COMMUNITY_WORK",
+                "Community_Kind_COMMUNITY_PARTY",
+                "Community_Kind_COMMUNITY_PROJECT",
+                "Community_Kind_COMMUNITY_OTHER"
+            ]
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Post": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "description": "Auto-hidden after this timestamp (epoch ms).",
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Kind"
+                },
+                "looking": {
+                    "description": "\"Looking for\" chips (extended template only).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "template": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Template"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Return": {
+            "type": "object",
+            "properties": {
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Community_Post"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Community_Template": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "Community_Template_COMMUNITY_FLAT",
+                "Community_Template_COMMUNITY_EXTENDED"
+            ]
+        },
+        "github_com_petrobsel_brndr_backend_gen.Email_Send_Code_Request": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Email_Verify_Code_Request": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Interaction_Category": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "x-enum-comments": {
+                "Interaction_Category_INTERACTION_CHATS": "messaging live flow",
+                "Interaction_Category_INTERACTION_LIKES": "they liked me, no opener",
+                "Interaction_Category_INTERACTION_LOCKED": "I opened, no mutual like: locked until they like back",
+                "Interaction_Category_INTERACTION_MATCHED": "mutual like, nobody wrote yet",
+                "Interaction_Category_INTERACTION_REQUESTS": "they liked me + opener, unanswered",
+                "Interaction_Category_INTERACTION_UNMATCHED": "match removed on purpose; tombstone, hidden from the hub"
+            },
+            "x-enum-descriptions": [
+                "messaging live flow",
+                "mutual like, nobody wrote yet",
+                "they liked me, no opener",
+                "they liked me + opener, unanswered",
+                "I opened, no mutual like: locked until they like back",
+                "match removed on purpose; tombstone, hidden from the hub",
+                ""
+            ],
+            "x-enum-varnames": [
+                "Interaction_Category_INTERACTION_CHATS",
+                "Interaction_Category_INTERACTION_MATCHED",
+                "Interaction_Category_INTERACTION_LIKES",
+                "Interaction_Category_INTERACTION_REQUESTS",
+                "Interaction_Category_INTERACTION_LOCKED",
+                "Interaction_Category_INTERACTION_UNMATCHED",
+                "Interaction_Category_INTERACTION_UNMATCHED_VISIBLE"
+            ]
+        },
+        "github_com_petrobsel_brndr_backend_gen.Interaction_Entry": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Interaction_Category"
+                },
+                "kinds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
+                    }
+                },
+                "last_message": {
+                    "description": "The pair's latest message, encrypted for the fetching user; absent\nwhen the thread has no messages (2026-09-03).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message"
+                        }
+                    ]
+                },
+                "person": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile"
+                },
+                "updated_at": {
+                    "description": "Last hub activity (message or state change), epoch ms — row ordering.",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Interaction_Query": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "peer_id": {
+                    "description": "0 = the whole hub; otherwise exactly this peer's entry from the\nviewer's perspective (absent when hidden from the viewer).",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Interactions_Return": {
+            "type": "object",
+            "properties": {
+                "interactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Interaction_Entry"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Key": {
             "type": "object",
             "properties": {
                 "key": {
@@ -408,49 +1564,7 @@
                 }
             }
         },
-        "model.Message": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "timestamp": {
-                    "type": "integer"
-                },
-                "user_keys_enc": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.Key"
-                    }
-                }
-            }
-        },
-        "model.Message_Send": {
-            "type": "object",
-            "properties": {
-                "auth": {
-                    "$ref": "#/definitions/model.Auth"
-                },
-                "message": {
-                    "$ref": "#/definitions/model.Message"
-                }
-            }
-        },
-        "model.Messages_Return": {
-            "type": "object",
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.Message"
-                    }
-                }
-            }
-        },
-        "model.Person_Profile": {
+        "github_com_petrobsel_brndr_backend_gen.Kind_Profile": {
             "type": "object",
             "properties": {
                 "bio": {
@@ -459,94 +1573,287 @@
                 "height": {
                     "type": "integer"
                 },
-                "id": {
-                    "type": "integer"
-                },
                 "images": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Profile_Image"
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Image"
                     }
                 },
-                "name": {
-                    "type": "string"
+                "looking_for": {
+                    "description": "Multi-choice looking-for intents (2026-09-03).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "looking_gender": {
+                    "description": "Preferred gender per intent, e.g. {\"serious\": \"female\"}.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "orientace": {
+                    "type": "string"
+                },
+                "zajmy": {
+                    "description": "Interest ids into the /zajmy catalog (string ids, 2026-09-03).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Like_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Like_Response": {
+            "type": "object",
+            "properties": {
+                "matched": {
+                    "description": "True when this like formed a mutual match — or, on unlike, when the\npair is matched (unlike after a match is a no-op: matches are\npermanent). The resulting hub state is read from /api/interactions (and,\nlater, delivered as a websocket Interaction_Updated event).",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Liked_Return": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Login_Request": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Login_Response": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Refresh_Token"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Me_Return": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "description": "Account-level fact, shared across both kind profiles.",
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "person": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile"
+                },
+                "username": {
+                    "description": "Login name (users.jmeno); the display name is Person_Profile.name.",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Message": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Stable storage id, assigned by the server: reactions and replies\nreference it (added 2026-09-03).",
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "peer_id": {
+                    "description": "The other party from the fetching user's perspective: the sender for\nreceived messages, the (other) recipient for own sent messages.",
+                    "type": "integer"
+                },
+                "reactions": {
+                    "description": "Reactions on this message, from the fetching user's perspective.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message_Reaction"
+                    }
+                },
+                "reply_to": {
+                    "description": "Storage id of the message this one replies to; 0 = not a reply.",
+                    "type": "integer"
+                },
+                "sender_id": {
+                    "description": "Routing metadata for thread bucketing (added 2026-08-04, G4): without a\nsender id the client cannot tell own bubbles from theirs; without the\npeer id it cannot group messages per conversation when only the\nfetching user's key is enclosed.",
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "user_keys_enc": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Key"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Message_React_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "emoji": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Message_Reaction": {
+            "type": "object",
+            "properties": {
+                "emoji": {
+                    "type": "string"
+                },
+                "from_me": {
+                    "description": "True when the fetching user placed this reaction.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Message_Send": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "message": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Messages_Return": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Person_Profile": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "description": "Exact birthday-aware age derived from users.birth_date (migration 00007).",
+                    "type": "integer"
+                },
+                "blocked": {
+                    "description": "True when a block stands between the viewer and this person, in EITHER\ndirection (2026-09-04 \"flags, not filters\" contract): the server never\nhides blocked people from payloads — it labels them, and the client\nrenders the blocked state (actions disabled; the server refuses them\nanyway, migration 00004 triggers). The blocker's own client already\nknows the direction from /api/blocked.",
+                    "type": "boolean"
+                },
+                "dating": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Kind_Profile"
+                },
+                "friendship": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Kind_Profile"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Shared identity (account-level, identical for both kinds).",
                     "type": "string"
                 },
                 "pohlavi": {
                     "type": "string"
                 },
-                "typ_hledany_vztah": {
-                    "type": "string"
-                },
                 "vzdalenost": {
                     "type": "number"
-                },
-                "zajmy": {
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Person_Profile_List": {
+            "type": "object",
+            "properties": {
+                "profiles": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile"
                     }
                 }
             }
         },
-        "model.Person_Profile_Request": {
+        "github_com_petrobsel_brndr_backend_gen.Person_Profile_Query": {
             "type": "object",
             "properties": {
                 "auth": {
-                    "$ref": "#/definitions/model.Auth"
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "email": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
-                }
-            }
-        },
-        "model.Ping_Test": {
-            "type": "object",
-            "properties": {
-                "auth": {
-                    "$ref": "#/definitions/model.Auth"
-                }
-            }
-        },
-        "model.Ping_Test_Response": {
-            "type": "object",
-            "properties": {
-                "token": {
-                    "$ref": "#/definitions/model.Refresh_Token"
-                }
-            }
-        },
-        "model.Post_Avatar_Request": {
-            "type": "object",
-            "properties": {
-                "auth": {
-                    "$ref": "#/definitions/model.Auth"
                 },
-                "image_path": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                "name": {
+                    "type": "string"
                 }
             }
         },
-        "model.Post_Image_Request": {
+        "github_com_petrobsel_brndr_backend_gen.Post_Image_Request": {
             "type": "object",
             "properties": {
                 "auth": {
-                    "$ref": "#/definitions/model.Auth"
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
                 },
                 "image": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
+                },
+                "kind": {
+                    "description": "Which profile the uploaded photo belongs to (2026-09-02).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
+                        }
+                    ]
                 }
             }
         },
-        "model.Post_Image_Response": {
+        "github_com_petrobsel_brndr_backend_gen.Post_Image_Response": {
             "type": "object",
             "properties": {
                 "image_url": {
@@ -560,7 +1867,7 @@
                 }
             }
         },
-        "model.Profile_Image": {
+        "github_com_petrobsel_brndr_backend_gen.Profile_Image": {
             "type": "object",
             "properties": {
                 "image_path": {
@@ -574,7 +1881,19 @@
                 }
             }
         },
-        "model.Refresh_Token": {
+        "github_com_petrobsel_brndr_backend_gen.Profile_Kind": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "Profile_Kind_PROFILE_DATING",
+                "Profile_Kind_PROFILE_FRIENDSHIP"
+            ]
+        },
+        "github_com_petrobsel_brndr_backend_gen.Refresh_Token": {
             "type": "object",
             "properties": {
                 "timestamp": {
@@ -588,14 +1907,175 @@
                 }
             }
         },
-        "model.Zajem_Full": {
+        "github_com_petrobsel_brndr_backend_gen.Register_Request": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.SFilter_Age": {
+            "type": "object",
+            "properties": {
+                "age_max": {
+                    "type": "integer"
+                },
+                "age_min": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.SFilter_Relationship_Status": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.SFilter_Sex": {
+            "type": "object",
+            "properties": {
+                "sex": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.SFilter_Uni": {
+            "type": "object",
+            "properties": {
+                "unis": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Suggestion_Filters": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Age"
+                },
+                "relationship_status": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Relationship_Status"
+                },
+                "sex": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Sex"
+                },
+                "uni": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Uni"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Suggestion_Search": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "filters": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Suggestion_Filters"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Unmatch_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Update_Profile_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "city": {
+                    "description": "Account-level, shared across kinds (2026-09-03). Empty = keep.",
+                    "type": "string"
+                },
+                "gps_pozice": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Image"
+                    }
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
+                },
+                "looking_for": {
+                    "description": "Multi-choice looking-for intents (2026-09-03).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "looking_gender": {
+                    "description": "Preferred gender per intent, e.g. {\"serious\": \"female\"}.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "orientace": {
+                    "type": "string"
+                },
+                "pohlavi": {
+                    "type": "string"
+                },
+                "prace": {
+                    "type": "string"
+                },
+                "zajmy": {
+                    "description": "Interest ids into the /zajmy catalog (string ids, 2026-09-03).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Zajem_Full": {
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "integer"
+                    "description": "String id from the moderated vocabulary (2026-09-03); the frontend's\ninterest ids are this id.",
+                    "type": "string"
                 },
                 "main_alias_id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -608,13 +2088,13 @@
                 }
             }
         },
-        "model.Zajmy_Request": {
+        "github_com_petrobsel_brndr_backend_gen.Zajmy_Request": {
             "type": "object",
             "properties": {
                 "zajmy": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Zajem_Full"
+                        "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Zajem_Full"
                     }
                 }
             }
