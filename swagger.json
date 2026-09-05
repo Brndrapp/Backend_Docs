@@ -947,6 +947,7 @@
         },
         "/delete": {
             "post": {
+                "description": "Irreversibly deletes the authenticated user's account: profiles, relations, sent messages, blocks, reports, browsing telemetry and community posts all cascade away at the database level; the login token and every live websocket connection are torn down. The account password is required — a stolen token alone cannot destroy an account. Peers lose the pair's hub entry and the user's sent messages, but keep their own side of every thread. Idempotent: an already-deleted account still returns 204 with its session revoked.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -954,12 +955,91 @@
                     "private"
                 ],
                 "summary": "Delete account",
-                "responses": {}
+                "parameters": [
+                    {
+                        "description": "Delete payload (password required)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Delete_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (missing password)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized (bad token, or the account no longer exists)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Wrong password",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/discovery": {
+            "post": {
+                "description": "Sets the caller's ghost flag for one kind. discoverable=false removes the user from that kind's discovery surfaces (the kind feeds, suggestions — and, once every presented kind is hidden, the /api/profile search) and refuses their initiations there (likes in that kind; first-contact messages while fully hidden). Existing connections are unaffected. The current state is read from /api/me (Me_Return.discoverable_*). Idempotent; setting discoverable=true un-hides.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Set per-kind discoverability",
+                "parameters": [
+                    {
+                        "description": "Discovery payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Discovery_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/feed": {
             "get": {
-                "description": "Returns profiles for the swipe feed (ordered list; a cursor can come later), excluding people whose visibility toward the caller is severed by a block. Every person carries both profiles; ?kind=dating|friendship narrows the feed to users presenting that mode.",
+                "description": "Returns profiles for the swipe feed (ordered list; a cursor can come later). Hidden users are excluded: a user hidden in the feed's kind (or, for the bare feed, in every kind they present) cannot be found here; existing connections are unaffected (the interaction hub keeps them). Every person carries both profiles; ?kind=dating|friendship narrows the feed to users presenting that mode.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1088,7 +1168,7 @@
         },
         "/profile": {
             "get": {
-                "description": "Returns every user matching the query (id, name, email), each with the shared identity and both profiles. Private since 2026-09-05 (SECURITY_AUDIT P0: the public lookup was a bulk-scraping hole — the email/name search in particular). Blocked pairs are flagged (person.blocked), never filtered — \"flags, not filters\".",
+                "description": "Returns every user matching the query (id, name, email), each with the shared identity and both profiles. Private since 2026-09-05 (SECURITY_AUDIT P0: the public lookup was a bulk-scraping hole — the email/name search in particular). Blocked pairs are flagged (person.blocked), never filtered — \"flags, not filters\". Fully-hidden users (every presented kind hidden, 2026-09-05) are not findable here; partially hidden ones are (they exist in their discoverable kinds) — existing connections reach them through the hub.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1668,6 +1748,13 @@
                     "description": "Account-level fact, shared across both kind profiles.",
                     "type": "string"
                 },
+                "discoverable_dating": {
+                    "description": "Per-kind discoverability (\"ghost mode\", 2026-09-05): false while the\nuser is hidden in that kind (set through /api/discovery). True when the\nkind has no profile at all (the default — nothing to hide).",
+                    "type": "boolean"
+                },
+                "discoverable_friendship": {
+                    "type": "boolean"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -2096,6 +2183,32 @@
                     "items": {
                         "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Zajem_Full"
                     }
+                }
+            }
+        },
+        "model.Delete_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Discovery_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "discoverable": {
+                    "description": "True = visible and findable (the default); false = hidden in that kind.",
+                    "type": "boolean"
+                },
+                "kind": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Profile_Kind"
                 }
             }
         }
