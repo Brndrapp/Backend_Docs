@@ -892,8 +892,11 @@
         },
         "/api/messages/react": {
             "post": {
-                "description": "Toggles the authenticated user's emoji reaction on a message (same emoji twice = remove). Only the sender or a recipient of the message may react; a blocked-pair thread is refused (400). The updated reaction state is read back via the message endpoints.",
+                "description": "Toggles the authenticated user's emoji reaction on a message (same emoji twice = remove). Only the sender or a recipient of the message may react; a blocked-pair thread is refused (400). The response carries the reacting user's updated copy of the message directly (Message_React_Return), so the client needs no /api/receive re-poll for one message.",
                 "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
                     "application/x-protobuf"
                 ],
                 "tags": [
@@ -912,8 +915,11 @@
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "The reacting user's updated message copy",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message_React_Return"
+                        }
                     },
                     "400": {
                         "description": "Bad request",
@@ -1158,7 +1164,7 @@
         },
         "/api/profile/update": {
             "post": {
-                "description": "Persists editable profile fields. Name, pohlavi, faculty and birth (year+month, stored on the last day of the month) are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
+                "description": "Persists editable profile fields. Name, pohlavi, faculty, birth (year+month, stored on the last day of the month) and the lifestyle facts (smoking/drinking/pets/children — optional presence: absent = keep, present = set or clear, validated against the shared vocabulary) are shared across profile kinds; bio, height, sex, orientation, relationship, interests and photos are written only to the request's `kind` profile (created on first write).",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1180,6 +1186,98 @@
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/push/subscribe": {
+            "post": {
+                "description": "Stores (or renews) the caller's browser push subscription — endpoint + the two client keys from pushManager.subscribe().toJSON().keys. Upsert by endpoint: a browser renewing a subscription must not duplicate. Dispatch (new message / interaction while offline) skips users with a live websocket connection.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Register a Web Push subscription",
+                "parameters": [
+                    {
+                        "description": "Push subscription payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Push_Subscribe_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (empty endpoint or keys)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/push/unsubscribe": {
+            "post": {
+                "description": "Deletes the caller's subscription for this endpoint (endpoint-scoped: an authenticated user cannot unsubscribe someone else's device). Idempotent — 204 whether or not the row existed.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Remove a Web Push subscription",
+                "parameters": [
+                    {
+                        "description": "Push unsubscribe payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Push_Unsubscribe_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad request (empty endpoint)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 }
             }
@@ -1216,6 +1314,75 @@
                 }
             }
         },
+        "/api/report/bug": {
+            "post": {
+                "description": "Public (no auth) bug report to the support inbox. The ONLY multipart endpoint — everything else under /api speaks application/x-protobuf; this one is multipart/form-data so screenshots arrive as original bytes and the report works even logged out / with a broken session. Photos are stored server-side under a non-web-served directory and their paths are listed in the email. Recipient: BRNDR_BUG_REPORT_TO (default podpora@brndr.cz). Limit: 5 requests per IP per hour.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Submit a bug report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report subject (≤ 200 chars, trimmed)",
+                        "name": "subject",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Report text (≤ 10 000 chars)",
+                        "name": "message",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Contact email (optional; must parse when present)",
+                        "name": "email",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Up to 5 photos, ≤ 10 MB each, original bytes (no re-encode)",
+                        "name": "photos",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Missing/oversized text fields, bad email, more than 5 photos, malformed multipart",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "413": {
+                        "description": "A photo (or the whole request) is over the size cap",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Per-IP rate limit; Retry-After header set",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to send the email / store the photos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/send": {
             "post": {
                 "description": "Stores an encrypted message for the recipients. An optional reply_to references a prior message of the same thread (visible to the sender); an invisible reply target is rejected. A first/unmatched send attaches the sender's like (so opening on someone who already liked you matches instantly).",
@@ -1243,6 +1410,52 @@
                     },
                     "400": {
                         "description": "Bad request (bad/foreign reply target, duplicate recipient)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/stats/registered": {
+            "post": {
+                "description": "How many accounts exist — the post-registration info dialog's \"Už se tě zastavilo X lidí\" (2026-09-06, UI #12). Informational only: ALL rows are counted, an account is registered whether or not its email is verified.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "produces": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "private"
+                ],
+                "summary": "Registered-account count",
+                "parameters": [
+                    {
+                        "description": "Registered-count payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Registered_Count_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account count",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Registered_Count_Return"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "string"
                         }
@@ -2369,6 +2582,13 @@
         "github_com_petrobsel_brndr_backend_gen.Me_Return": {
             "type": "object",
             "properties": {
+                "birth_month": {
+                    "type": "integer"
+                },
+                "birth_year": {
+                    "description": "Birth readback (2026-09-06, profile-field parity #15): the stored\nyear+month the owner picked (users.birth_date — the stored day is the\nstorage-only last-day-of-month convention, never shown). Self only:\nothers see just the derived Person_Profile.age. 0 = not set.",
+                    "type": "integer"
+                },
                 "city": {
                     "description": "Account-level fact, shared across both kind profiles.",
                     "type": "string"
@@ -2445,6 +2665,14 @@
                 }
             }
         },
+        "github_com_petrobsel_brndr_backend_gen.Message_React_Return": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Message"
+                }
+            }
+        },
         "github_com_petrobsel_brndr_backend_gen.Message_Reaction": {
             "type": "object",
             "properties": {
@@ -2512,8 +2740,14 @@
                     "description": "True when a block stands between the viewer and this person, in EITHER\ndirection (2026-09-04 \"flags, not filters\" contract): the server never\nhides blocked people from payloads — it labels them, and the client\nrenders the blocked state (actions disabled; the server refuses them\nanyway, migration 00004 triggers). The blocker's own client already\nknows the direction from /api/blocked.",
                     "type": "boolean"
                 },
+                "children": {
+                    "type": "string"
+                },
                 "dating": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Kind_Profile"
+                },
+                "drinking": {
+                    "type": "string"
                 },
                 "faculty": {
                     "description": "VUT faculty key ('FIT', 'FaVU', …; 2026-09-05) from the shared\nvocabulary (vocab/fakulty.go). Public — it renders on profile cards.\nEmpty = not set („už nestuduji“).",
@@ -2529,7 +2763,14 @@
                     "description": "Shared identity (account-level, identical for both kinds).",
                     "type": "string"
                 },
+                "pets": {
+                    "type": "string"
+                },
                 "pohlavi": {
+                    "type": "string"
+                },
+                "smoking": {
+                    "description": "Lifestyle facts (2026-09-06, profile-field parity #15): the closed\nvocabularies shared with the frontend (model/types.ts) — smoking and\ndrinking are OccasionalFact ('no' | 'yes' | 'sometimes'), pets is\nPetsFact ('have' | 'dontHave' | 'want' | 'dontWant'), children is\nChildrenFact ('no' | 'yes' | 'want' | 'unsure'). Account-level like\nfaculty (one set per user, shared across kinds — they live on the\npublic card others see). Display scoping is a client-side decision\n(children is rendered in the dating space only). Empty = unset\n(nothing rendered).",
                     "type": "string"
                 },
                 "vzdalenost": {
@@ -2638,6 +2879,34 @@
                 "Profile_Kind_PROFILE_FRIENDSHIP"
             ]
         },
+        "github_com_petrobsel_brndr_backend_gen.Push_Subscribe_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "auth_key": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "p256dh": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Push_Unsubscribe_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                },
+                "endpoint": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_petrobsel_brndr_backend_gen.Refresh_Token": {
             "type": "object",
             "properties": {
@@ -2663,6 +2932,22 @@
                 },
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Registered_Count_Request": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Auth"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Registered_Count_Return": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
                 }
             }
         },
@@ -2751,8 +3036,14 @@
                     "description": "Account-level birth (2026-09-05): the user picks year+month only, the\nday is unknown by design. The server stores users.birth_date on the\nLAST day of that month (\"assume it is the last day of the month\"),\nso the birthday-aware exact_age turns the age on the month's last\nday — the same convention the frontend's ageFromBirth uses.\nZero = keep (never cleared; same as the other identity fields).",
                     "type": "integer"
                 },
+                "children": {
+                    "type": "string"
+                },
                 "city": {
                     "description": "Account-level, shared across kinds (2026-09-03). Empty = keep.",
+                    "type": "string"
+                },
+                "drinking": {
                     "type": "string"
                 },
                 "faculty": {
@@ -2794,10 +3085,17 @@
                 "orientace": {
                     "type": "string"
                 },
+                "pets": {
+                    "type": "string"
+                },
                 "pohlavi": {
                     "type": "string"
                 },
                 "prace": {
+                    "type": "string"
+                },
+                "smoking": {
+                    "description": "Lifestyle facts (2026-09-06, profile-field parity #15): the same\nclosed vocabularies as Person_Profile fields 11-14. proto3 explicit\npresence carries the per-field keep/set distinction the account\nfields need: ABSENT = keep (a per-kind bio edit must not touch them),\nPRESENT with a vocabulary value = set, PRESENT and empty = clear.\nValidated at the API boundary against the shared vocabulary\n(vocab/lifestyle.go — the same keys the frontend's filters use).",
                     "type": "string"
                 },
                 "zajmy": {
