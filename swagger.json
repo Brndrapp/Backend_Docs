@@ -2781,6 +2781,10 @@
         "github_com_petrobsel_brndr_backend_gen.Person_Profile_List": {
             "type": "object",
             "properties": {
+                "has_more": {
+                    "description": "Feed pagination (2026-09-07): true when more rows match beyond the\nrequested ?limit — the client fetches the next page with ?offset.\nOnly the feed sets it; every other surface leaves it false.",
+                    "type": "boolean"
+                },
                 "profiles": {
                     "type": "array",
                     "items": {
@@ -2984,11 +2988,27 @@
                 "age": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Age"
                 },
+                "children": {
+                    "type": "string"
+                },
+                "drinking": {
+                    "type": "string"
+                },
+                "faculty": {
+                    "description": "Extended filters (2026-09-07, parity with the UI's FilterState):\naccount-level users columns — faculty key (vocab/fakulty.go) and the\nlifestyle-fact keys (vocab/lifestyle.go). Empty string = not filtered;\nthe handler validates non-empty values against the shared vocabularies\n(the same discipline as h_update_profile — the client is not trusted).",
+                    "type": "string"
+                },
+                "pets": {
+                    "type": "string"
+                },
                 "relationship_status": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Relationship_Status"
                 },
                 "sex": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Sex"
+                },
+                "smoking": {
+                    "type": "string"
                 }
             }
         },
