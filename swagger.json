@@ -840,7 +840,7 @@
         },
         "/api/me": {
             "get": {
-                "description": "Returns the authenticated user's own view: the shared identity, both kind-profiles, and the account facts only the owner may read (username, email, city). The public /profile lookup cannot return these — they live on Me_Return, not Person_Profile.",
+                "description": "Returns the authenticated user's own view: the shared identity, both kind-profiles, and the account facts only the owner may read (email, city). The public /profile lookup cannot return these — they live on Me_Return, not Person_Profile.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -959,7 +959,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Password_Send_Code_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Password_Send_Code_Request"
                         }
                     }
                 ],
@@ -1005,7 +1005,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Password_Verify_Code_Request"
+                            "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Password_Verify_Code_Request"
                         }
                     }
                 ],
@@ -1574,7 +1574,7 @@
         },
         "/login": {
             "post": {
-                "description": "Exchanges username + password (bcrypt, set at /register) for the account id and a refresh token — the only way to obtain one. An UNAUTH account (registered, email not yet verified) is refused with 403; without a token no private endpoint (or websocket) is reachable.",
+                "description": "Exchanges email + password (bcrypt, set at /register) for the account id and a refresh token — the only way to obtain one. The email is the VUT ID address (the login identifier; the username was removed 2026-09-06). An UNAUTH account (registered, email not yet verified) is refused with 403; without a token no private endpoint (or websocket) is reachable.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1604,7 +1604,7 @@
                         }
                     },
                     "400": {
-                        "description": "Bad request (missing username/password)",
+                        "description": "Bad request (missing email/password)",
                         "schema": {
                             "type": "string"
                         }
@@ -1666,7 +1666,7 @@
         },
         "/profile": {
             "get": {
-                "description": "Returns every user matching the query (id, name, email), each with the shared identity and both profiles. Private since 2026-09-05 (SECURITY_AUDIT P0: the public lookup was a bulk-scraping hole — the email/name search in particular). Blocked pairs are flagged (person.blocked), never filtered — \"flags, not filters\". Fully-hidden users (every presented kind hidden, 2026-09-05) are not findable here; partially hidden ones are (they exist in their discoverable kinds) — existing connections reach them through the hub.",
+                "description": "Returns every user matching the query (id, email — the name lookup went away with the username, 2026-09-06), each with the shared identity and both profiles. Private since 2026-09-05 (SECURITY_AUDIT P0: the public lookup was a bulk-scraping hole — the email search in particular). Blocked pairs are flagged (person.blocked), never filtered — \"flags, not filters\". Fully-hidden users (every presented kind hidden, 2026-09-05) are not findable here; partially hidden ones are (they exist in their discoverable kinds) — existing connections reach them through the hub.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1679,7 +1679,7 @@
                 "summary": "Get profile",
                 "parameters": [
                     {
-                        "description": "Profile query payload (at least one of id/name/email)",
+                        "description": "Profile query payload (at least one of id/email)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1712,7 +1712,7 @@
         },
         "/register": {
             "post": {
-                "description": "Creates an account. The email must be a student address (vut.cz domain only — not vutbr.cz, per the 2026-09-05 decision). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the username is already taken.",
+                "description": "Creates an account. The email must be a student address (vut.cz domain only — not vutbr.cz, per the 2026-09-05 decision). first_name is the display name; the email itself is the login identifier (the separate username was removed 2026-09-06). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the email is already registered.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
@@ -1748,7 +1748,7 @@
                         }
                     },
                     "409": {
-                        "description": "User with username already exists",
+                        "description": "User with email already exists",
                         "schema": {
                             "type": "string"
                         }
@@ -2347,10 +2347,10 @@
         "github_com_petrobsel_brndr_backend_gen.Login_Request": {
             "type": "object",
             "properties": {
-                "password": {
+                "email": {
                     "type": "string"
                 },
-                "username": {
+                "password": {
                     "type": "string"
                 }
             }
@@ -2385,10 +2385,6 @@
                 },
                 "person": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Person_Profile"
-                },
-                "username": {
-                    "description": "Login name (users.jmeno); the display name is Person_Profile.name.",
-                    "type": "string"
                 }
             }
         },
@@ -2483,6 +2479,28 @@
                 }
             }
         },
+        "github_com_petrobsel_brndr_backend_gen.Password_Send_Code_Request": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_petrobsel_brndr_backend_gen.Password_Verify_Code_Request": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_petrobsel_brndr_backend_gen.Person_Profile": {
             "type": "object",
             "properties": {
@@ -2541,9 +2559,6 @@
                 },
                 "id": {
                     "type": "integer"
-                },
-                "name": {
-                    "type": "string"
                 }
             }
         },
@@ -2643,10 +2658,10 @@
                 "email": {
                     "type": "string"
                 },
-                "password": {
+                "first_name": {
                     "type": "string"
                 },
-                "username": {
+                "password": {
                     "type": "string"
                 }
             }
@@ -2678,17 +2693,6 @@
                 }
             }
         },
-        "github_com_petrobsel_brndr_backend_gen.SFilter_Uni": {
-            "type": "object",
-            "properties": {
-                "unis": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "github_com_petrobsel_brndr_backend_gen.Suggestion_Filters": {
             "type": "object",
             "properties": {
@@ -2700,9 +2704,6 @@
                 },
                 "sex": {
                     "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Sex"
-                },
-                "uni": {
-                    "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.SFilter_Uni"
                 }
             }
         },
@@ -2837,28 +2838,6 @@
                     "items": {
                         "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Zajem_Full"
                     }
-                }
-            }
-        },
-        "model.Password_Send_Code_Request": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.Password_Verify_Code_Request": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "new_password": {
-                    "type": "string"
                 }
             }
         }
