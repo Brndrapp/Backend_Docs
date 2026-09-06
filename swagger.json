@@ -942,6 +942,98 @@
                 }
             }
         },
+        "/api/password/send-code": {
+            "post": {
+                "description": "Issues a one-time code to the account's email (6 digits, 10 min TTL). At most one send per address per minute; a resend replaces any previous code. Always 204 — even for an address with no account, so the endpoint cannot be used to enumerate registered emails. Only ACTIVE accounts get a code (stored and mailed); a syntactically invalid address is 400. Delivery needs BRNDR_SMTP_PASS on the server — otherwise the code is logged, not sent (dev mode).",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Send a password reset code",
+                "parameters": [
+                    {
+                        "description": "Account email",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Password_Send_Code_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Malformed email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Cooldown; Retry-After header set",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/password/verify-code": {
+            "post": {
+                "description": "Checks the submitted one-time code and, on match, installs the new bcrypt password in the same call. The account's E2EE identity is deleted (the old password wrapped the private key — old messages become unreadable; the user re-enrolls on next use) and the live refresh token is revoked. 400 when no code was requested or the code is wrong/expired or the new password is empty, 429 after too many wrong attempts (request a new code). The reset code is single-use.",
+                "consumes": [
+                    "application/x-protobuf"
+                ],
+                "tags": [
+                    "public"
+                ],
+                "summary": "Verify a reset code and set the new password",
+                "parameters": [
+                    {
+                        "description": "Email, typed code, new password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Password_Verify_Code_Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "No code / wrong or expired code / bad new password",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many attempts",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/photo": {
             "post": {
                 "description": "Uploads an image (max 2 MB): webp inputs (the client's compressed format) are stored verbatim, other image formats are converted to webp, non-images are refused. Returns the stored image url.",
@@ -2745,6 +2837,28 @@
                     "items": {
                         "$ref": "#/definitions/github_com_petrobsel_brndr_backend_gen.Zajem_Full"
                     }
+                }
+            }
+        },
+        "model.Password_Send_Code_Request": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Password_Verify_Code_Request": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
                 }
             }
         }
