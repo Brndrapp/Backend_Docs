@@ -1925,7 +1925,7 @@
         },
         "/register": {
             "post": {
-                "description": "Creates an account. The email must be a student address (vut.cz domain only — not vutbr.cz, per the 2026-09-05 decision). first_name is the display name; the email itself is the login identifier (the separate username was removed 2026-09-06). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the email is already registered.",
+                "description": "Creates an account. The email must be a student address (vut.cz domain only — not vutbr.cz, per the 2026-09-05 decision) with a login-shaped local part (letters+digits only, LOGIN_EMAIL_PLAN.md 2026-09-06). first_name is the display name; the email itself is the login identifier (the separate username was removed 2026-09-06). An UNVERIFIED email still creates the account, but it stays locked — no login token (/api/login refuses it) until the email is verified through /api/email/verify-code. Fails if the email is already registered.",
                 "consumes": [
                     "application/x-protobuf"
                 ],
